@@ -1,5 +1,5 @@
 import './style.css'
-import coverUrl from './assets/anh-bia.png'
+import coverUrl from './assets/anh-bia.jpg'
 import { mountSfx } from './sfx.js'
 
 const API_BASE = 'https://deadth-note-be.vercel.app'
