@@ -39,6 +39,20 @@ export function mountSfx() {
   window.addEventListener('pointerdown', unlock)
   window.addEventListener('keydown', unlock)
 
+  function arm() {
+    for (const audio of [thunder, crow, page, cover]) {
+      const volume = audio.volume
+      audio.volume = 0
+      audio.play().then(() => {
+        audio.pause()
+        audio.currentTime = 0
+        audio.volume = volume
+      }).catch(() => {
+        audio.volume = volume
+      })
+    }
+  }
+
   function startStorm(ms) {
     stormMs = ms
     stormOn = true
@@ -77,7 +91,7 @@ export function mountSfx() {
     if (ambienceOn) return
     ambienceOn = true
     scheduleHowl(11000 + Math.random() * 8000)
-    scheduleCrow(7000 + Math.random() * 7000)
+    scheduleCrow(2000 + Math.random() * 1000)
   }
 
   function scheduleBolts(elapsed) {
@@ -162,6 +176,7 @@ export function mountSfx() {
   }
 
   return {
+    arm,
     startStorm,
     bookIn,
     finishIntro,

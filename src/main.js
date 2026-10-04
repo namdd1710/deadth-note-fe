@@ -1,5 +1,7 @@
 import './style.css'
 import coverUrl from './assets/anh-bia.jpg'
+import titleUrl from './assets/tieu-de.png'
+import exploreUrl from './assets/kham-pha.png'
 import { mountSfx } from './sfx.js'
 
 const API_BASE = 'https://deadth-note-be.vercel.app'
@@ -15,7 +17,7 @@ const singleQuery = window.matchMedia('(max-width: 800px)')
 const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI']
 
 const timers = []
-let phase = 'storm'
+let phase = 'gate'
 let settled = false
 let opened = false
 let spread = 0
@@ -117,7 +119,42 @@ modal.append(card)
 const announce = el('div', 'announce')
 announce.setAttribute('aria-live', 'polite')
 
-app.append(ash, fogA, fogB, groundFog, rig, storm, redPulse, vignette, grain, modal, announce)
+const gate = el('div', 'gate')
+const mistA = el('div', 'gate-mist')
+const mistB = el('div', 'gate-mist gate-mist-b')
+mistA.setAttribute('aria-hidden', 'true')
+mistB.setAttribute('aria-hidden', 'true')
+const gateCopy = el('div', 'gate-copy')
+const mark = el('div', 'gate-mark')
+const green = el('div', 'gate-green')
+const gleamL = el('span', 'gleam gleam-l')
+const gleamR = el('span', 'gleam gleam-r')
+green.setAttribute('aria-hidden', 'true')
+gleamL.setAttribute('aria-hidden', 'true')
+gleamR.setAttribute('aria-hidden', 'true')
+const title = document.createElement('img')
+title.className = 'gate-title'
+title.src = titleUrl
+title.alt = 'Death Note'
+title.draggable = false
+mark.append(green, gleamL, gleamR, title)
+const gateRule = el('p', 'gate-line gate-rule', 'Kẻ nào viết tên này vào sổ, kẻ đó sẽ phải chết.')
+const gateLore = el('p', 'gate-line gate-body', 'Giữa cõi u minh tĩnh mịch, khi màn đêm buông xuống và ánh nến chập chờn vụt tắt, cuốn sổ tử thần chính thức mở ra trang định mệnh. Từng nét mực đỏ rực như máu khô rỉ xuống từ cõi vô tận, mang theo hơi thở lạnh lẽo của tử thần Ryuk và ánh mắt vô hồn của đầu lâu nguyền rủa. Đây không chỉ là một văn bản, mà là chiếc chìa khóa định đoạt sinh tử—nơi mọi cái tên cất lên đều phải trả giá bằng sự diệt vong vĩnh viễn.')
+const gateClose = el('p', 'gate-line gate-close', 'Hãy chạm để thức tỉnh cõi âm, và lắng nghe tiếng vọng từ vực thẳm...')
+const enterBtn = el('button', 'gate-btn')
+enterBtn.type = 'button'
+enterBtn.disabled = !reduceMotion
+const enterImg = document.createElement('img')
+enterImg.src = exploreUrl
+enterImg.alt = 'Khám phá'
+enterImg.draggable = false
+enterBtn.append(enterImg)
+gateCopy.append(gateRule, gateLore, gateClose, enterBtn)
+const gateScroll = el('div', 'gate-scroll')
+gateScroll.append(gateCopy)
+gate.append(mistA, mistB, mark, gateScroll)
+
+app.append(ash, fogA, fogB, groundFog, rig, storm, redPulse, vignette, grain, modal, announce, gate)
 const sfx = mountSfx()
 
 startAsh(ash)
@@ -142,7 +179,7 @@ loadRemoteNames()
 window.addEventListener('keydown', (event) => {
   if (event.key === 'Escape') {
     if (!modal.hidden) closePopup()
-    else if (!settled) jumpToBook(false)
+    else if (phase !== 'gate' && !settled) jumpToBook(false)
     return
   }
   if (!settled || busy || !modal.hidden) return
@@ -150,8 +187,90 @@ window.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft') turn('prev')
 })
 
-if (reduceMotion) jumpToBook(false)
-else runIntro()
+enterBtn.addEventListener('click', begin)
+typeGate([
+  { node: gateRule, text: gateRule.textContent, pace: 42 },
+  { node: gateLore, text: gateLore.textContent, pace: 26 },
+  { node: gateClose, text: gateClose.textContent, pace: 36 },
+])
+
+function followType(target) {
+  const edge = target.getBoundingClientRect().bottom
+  const limit = gateScroll.getBoundingClientRect().bottom - 36
+  if (edge > limit) gateScroll.scrollTop += edge - limit
+}
+
+function typeGate(lines) {
+  const prepared = lines.map((line) => {
+    const chars = Array.from(line.text)
+    line.node.replaceChildren()
+    const spans = chars.map((char) => {
+      const span = document.createElement('span')
+      span.className = 'gate-char'
+      span.textContent = char
+      line.node.append(span)
+      return span
+    })
+    return { ...line, spans }
+  })
+  if (reduceMotion) {
+    for (const line of prepared) for (const span of line.spans) span.classList.add('on')
+    revealEnter()
+    return
+  }
+  const caret = el('span', 'gate-caret')
+  caret.setAttribute('aria-hidden', 'true')
+  prepared[0].node.prepend(caret)
+  let lineIndex = 0
+  let charIndex = 0
+  const tick = () => {
+    if (phase !== 'gate') return
+    const line = prepared[lineIndex]
+    if (!line) {
+      caret.remove()
+      revealEnter()
+      return
+    }
+    if (charIndex >= line.spans.length) {
+      lineIndex += 1
+      charIndex = 0
+      const next = prepared[lineIndex]
+      if (next) next.node.prepend(caret)
+      followType(caret)
+      window.setTimeout(tick, 340)
+      return
+    }
+    const span = line.spans[charIndex]
+    span.classList.add('on')
+    span.after(caret)
+    followType(caret)
+    charIndex += 1
+    const char = span.textContent
+    const pause = '.!?…'.includes(char) ? 210 : ',—'.includes(char) ? 90 : line.pace
+    window.setTimeout(tick, pause)
+  }
+  window.setTimeout(tick, 2100)
+}
+
+function revealEnter() {
+  if (phase !== 'gate') return
+  gate.classList.add('ready')
+  enterBtn.disabled = false
+  enterBtn.focus({ preventScroll: true })
+  followType(enterBtn)
+}
+
+function begin() {
+  if (phase !== 'gate') return
+  enterBtn.disabled = true
+  sfx.arm()
+  gate.classList.add('leave')
+  window.setTimeout(() => {
+    gate.hidden = true
+  }, 420)
+  if (reduceMotion) jumpToBook(false)
+  else runIntro()
+}
 
 function runIntro() {
   phase = 'storm'
